@@ -28,81 +28,78 @@ router.use((0, cors_1.default)({
 }));
 function authMiddleware(req, res, next) {
     const token = req.cookies.token;
+    console.log('Token from cookies:', token);
     if (!token) {
         console.error("No token found in cookies");
         res.status(400).json({ error: 'Access Denied1' });
         return;
     }
     if (!JWT_SECRET) {
-        console.error("No token found in cookies");
-        res.status(400).json({ error: 'Access Denied1' });
+        console.error("JWT_SECRET is not defined");
+        res.status(400).json({ error: 'Access Denied2' });
         return;
     }
     jsonwebtoken_1.default.verify(token, JWT_SECRET, function (err, user) {
         if (err) {
-            console.error('Token Failed', err);
+            console.error('Token verification failed:', err);
             res.status(400).json({ error: "Access Denied3" });
         }
-        req.body.seller = user;
+        req.body.user = user;
         next();
     });
 }
-router.post('/', authMiddleware, function (req, res) {
+router.get('/', authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = req.body.user.mainId2;
+    try {
+        const myorder = yield prisma.order.findMany({
+            where: {
+                userId: parseInt(userId)
+            },
+            include: {
+                product: true,
+            },
+        });
+        res.status(200).json(myorder);
+    }
+    catch (error) {
+        console.error("Error fetching order:", error);
+        res.status(500).json({ error: "Error fetching order" });
+    }
+}));
+router.post('/move-to-order', authMiddleware, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { title, description, price } = req.body;
-        console.log('Decoded User:', req.body.seller);
-        const sellerId = req.body.seller.mainId;
+        const userId = req.body.user.mainId2;
         try {
-            const product = yield prisma.products.create({
-                data: {
-                    title,
-                    description,
-                    price,
-                    sellerId: parseInt(sellerId)
-                }
-            });
-            res.status(200).json(product);
-        }
-        catch (e) {
-            console.error('Error:', e);
-            res.status(500).json({ error: "Error Creating product" });
-        }
-    });
-});
-router.put('/', authMiddleware, function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const { id, title, description, price } = req.body;
-        console.log('Decoded User:', req.body.seller);
-        const sellerId = req.body.seller.mainId;
-        try {
-            const product = yield prisma.products.update({
+            const cartItems = yield prisma.cart.findMany({
                 where: {
-                    id: parseInt(id)
+                    userId: parseInt(userId)
                 },
-                data: {
-                    title,
-                    description,
-                    price,
-                    sellerId: parseInt(sellerId)
-                }
+                include: {
+                    product: true,
+                },
             });
-            res.status(200).json(product);
+            if (cartItems.length === 0) {
+                res.status(400).json({ message: "Cart is empty" });
+                return;
+            }
+            const ordersData = cartItems.map((item) => ({
+                userId: parseInt(userId),
+                productId: item.productId,
+                totalPrice: item.product.price * 1,
+            }));
+            const orders = yield prisma.order.createMany({
+                data: ordersData,
+            });
+            yield prisma.cart.deleteMany({
+                where: {
+                    userId: parseInt(userId)
+                },
+            });
+            res.status(200).json({ message: "Cart moved to orders successfully", orders });
         }
         catch (e) {
-            console.error('Error:', e);
-            res.status(500).json({ error: "Error Editing product" });
-        }
-    });
-});
-router.get('/bulk', function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const products = yield prisma.products.findMany();
-            res.status(200).json(products);
-        }
-        catch (e) {
-            console.error("Error fetching meetings:", e);
-            res.status(500).json({ error: "Error fetching meetings" });
+            console.error("Error moving cart to orders:", e);
+            res.status(500).json({ error: "Error moving to orders" });
         }
     });
 });

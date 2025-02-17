@@ -54,7 +54,7 @@ router.post('/', authMiddleware, async function (req,res){
     res.status(200).json(product)
     }catch(e){
         console.error('Error:', e);
-        res.status(500).json({ error: "Error Creating Meeting" });
+        res.status(500).json({ error: "Error Creating product" });
     }
 })
 

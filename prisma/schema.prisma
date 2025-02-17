@@ -24,8 +24,8 @@ model Products {
   sellerId Int
   seller Seller  @relation(fields:[sellerId], references: [id])
   user User[] @relation("Cart")
-  cart Cart[] 
-
+  cart Cart[]
+  orders Order[] 
 }
 
 model User {
@@ -36,7 +36,7 @@ model User {
   address String
   product Products[] @relation("Cart")
   cart Cart[]
-
+  orders Order[]
 } 
  
 model Cart {
@@ -45,4 +45,14 @@ model Cart {
   productId Int
   product  Products @relation(fields: [productId], references: [id], onDelete: Cascade)
   @@id([userId, productId])  
+}
+
+model Order{
+   id Int @id@default(autoincrement())
+  userId Int
+  user User @relation(fields: [userId], references: [id])
+  productId Int
+  product  Products @relation(fields: [productId], references: [id], onDelete: Cascade)
+  totalPrice Int
+  
 }

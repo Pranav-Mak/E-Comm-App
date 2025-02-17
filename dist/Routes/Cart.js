@@ -62,7 +62,7 @@ router.post('/add', authMiddleware, function (req, res) {
                 }
             });
             if (existingEntry) {
-                res.status(400).json({ message: "Employee has already joined the meeting" });
+                res.status(400).json({ message: "product has already been added to the cart" });
                 return;
             }
             const add = yield prisma.cart.create({
